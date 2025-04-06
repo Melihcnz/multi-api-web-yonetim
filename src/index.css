@@ -5,9 +5,51 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #f8f9fa;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+.card {
+  border-radius: 8px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+  font-weight: bold;
+}
+
+.badge {
+  font-weight: normal;
+  padding: 0.4em 0.6em;
+}
+
+.table-card {
+  cursor: pointer;
+}
+
+.btn {
+  border-radius: 4px;
+}
+
+/* Status Badge Colors */
+.badge-available {
+  background-color: #28a745;
+}
+
+.badge-occupied {
+  background-color: #dc3545;
+}
+
+.badge-reserved {
+  background-color: #ffc107;
+  color: #212529;
 }
