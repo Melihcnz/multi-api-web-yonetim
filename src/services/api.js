@@ -72,6 +72,58 @@ export const authService = {
   getProfile: async () => {
     return api.get('/api/users/profile');
   },
+  updateProfile: async (profileData) => {
+    try {
+      console.log('Profil güncelleme isteği gönderiliyor:', profileData);
+      
+      // Kullanıcı tipini localStorage'dan kontrol et
+      const userInfo = localStorage.getItem('userInfo');
+      let isCompany = false;
+      
+      if (userInfo) {
+        const user = JSON.parse(userInfo);
+        // Firma hesabı mı kontrol et (email firma email'i ise veya user object company bilgisi içermiyorsa)
+        isCompany = !user.company;
+      }
+      
+      // Kullanıcı veya firma için uygun endpoint'i kullan
+      const endpoint = isCompany ? '/api/companies/profile' : '/api/users/profile';
+      
+      const response = await api.put(endpoint, profileData);
+      console.log('Profil güncelleme yanıtı:', response.data);
+      
+      return response;
+    } catch (error) {
+      console.error('Profil güncelleme hatası:', error);
+      throw error;
+    }
+  },
+  changePassword: async (passwordData) => {
+    try {
+      // Bu işlem updateProfile ile birleştirildi, güvenlik için ayrı bir endpoint tercih edilebilir
+      console.log('Şifre değiştirme isteği gönderiliyor');
+      
+      // Kullanıcı tipini localStorage'dan kontrol et
+      const userInfo = localStorage.getItem('userInfo');
+      let isCompany = false;
+      
+      if (userInfo) {
+        const user = JSON.parse(userInfo);
+        isCompany = !user.company;
+      }
+      
+      // Kullanıcı veya firma için uygun endpoint'i kullan
+      const endpoint = isCompany ? '/api/companies/profile' : '/api/users/profile';
+      
+      const response = await api.put(endpoint, passwordData);
+      console.log('Şifre değiştirme yanıtı:', response.data);
+      
+      return response;
+    } catch (error) {
+      console.error('Şifre değiştirme hatası:', error);
+      throw error;
+    }
+  }
 };
 
 // Masa servisleri
@@ -192,6 +244,40 @@ export const orderService = {
       throw error;
     }
   },
+  updateOrder: async (id, orderData) => {
+    try {
+      console.log('Sipariş güncelleme isteği gönderiliyor:', id, orderData);
+      const token = window.localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Oturum bilgisi bulunamadı');
+      }
+      
+      // Backend'de orders/:id PUT yok, bunun yerine addItem kullanabiliriz
+      // Önce tüm eski ürünleri kaldıralım (bu endpoint yok ama API'nin iptal + yeni sipariş mantığıyla çalışabiliriz)
+      try {
+        // Siparişi iptal edip yeniden oluşturmak için önce durumunu güncelle
+        await api.put(`/api/orders/${id}/status`, { status: 'cancelled' });
+        
+        // Sonra yeni bir sipariş oluştur
+        const formattedData = {
+          tableId: orderData.tableId,
+          items: orderData.items.map(item => ({
+            productId: item.productId || item.product,
+            quantity: item.quantity,
+            notes: item.notes || ''
+          }))
+        };
+        
+        return await api.post('/api/orders', formattedData);
+      } catch (innerError) {
+        console.error('Sipariş güncelleme iç hatası:', innerError);
+        throw innerError;
+      }
+    } catch (error) {
+      console.error('Sipariş güncelleme hatası:', error);
+      throw error;
+    }
+  },
 };
 
 // Ürün servisleri
@@ -245,8 +331,159 @@ export const productService = {
 // Kategori servisleri
 export const categoryService = {
   getAllCategories: async () => {
-    return api.get('/api/product-categories');
+    try {
+      console.log('Tüm kategoriler getiriliyor...');
+      const token = window.localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Oturum bilgisi bulunamadı');
+      }
+      
+      return await api.get('/api/product-categories');
+    } catch (error) {
+      console.error('Kategorileri getirme hatası:', error);
+      throw error;
+    }
   },
+  createCategory: async (categoryData) => {
+    try {
+      console.log('Kategori oluşturma isteği gönderiliyor:', categoryData);
+      const token = window.localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Oturum bilgisi bulunamadı');
+      }
+      
+      const response = await api.post('/api/product-categories', categoryData);
+      console.log('Kategori oluşturma yanıtı:', response.data);
+      return response;
+    } catch (error) {
+      console.error('Kategori oluşturma hatası:', error);
+      throw error;
+    }
+  },
+  updateCategory: async (id, categoryData) => {
+    try {
+      return await api.put(`/api/product-categories/${id}`, categoryData);
+    } catch (error) {
+      console.error('Kategori güncelleme hatası:', error);
+      throw error;
+    }
+  },
+  deleteCategory: async (id) => {
+    try {
+      return await api.delete(`/api/product-categories/${id}`);
+    } catch (error) {
+      console.error('Kategori silme hatası:', error);
+      throw error;
+    }
+  }
+};
+
+// Fatura servisleri
+export const invoiceService = {
+  getAllInvoices: async () => {
+    try {
+      console.log('Tüm faturalar getiriliyor...');
+      const token = window.localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Oturum bilgisi bulunamadı');
+      }
+      
+      return await api.get('/api/invoices');
+    } catch (error) {
+      console.error('Faturaları getirme hatası:', error);
+      throw error;
+    }
+  },
+  getInvoiceById: async (id) => {
+    try {
+      return await api.get(`/api/invoices/${id}`);
+    } catch (error) {
+      console.error('Fatura detayı getirme hatası:', error);
+      throw error;
+    }
+  },
+  createInvoice: async (invoiceData) => {
+    try {
+      console.log('Fatura oluşturma isteği gönderiliyor:', invoiceData);
+      const token = window.localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Oturum bilgisi bulunamadı');
+      }
+      
+      const response = await api.post('/api/invoices', invoiceData);
+      console.log('Fatura oluşturma yanıtı:', response.data);
+      return response;
+    } catch (error) {
+      console.error('Fatura oluşturma hatası:', error);
+      throw error;
+    }
+  },
+  updateInvoiceStatus: async (id, paymentStatus) => {
+    try {
+      return await api.put(`/api/invoices/${id}/status`, { paymentStatus });
+    } catch (error) {
+      console.error('Fatura durumu güncelleme hatası:', error);
+      throw error;
+    }
+  }
+};
+
+// Ödeme servisleri
+export const paymentService = {
+  getAllPayments: async () => {
+    try {
+      console.log('Tüm ödemeler getiriliyor...');
+      const token = window.localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Oturum bilgisi bulunamadı');
+      }
+      
+      return await api.get('/api/payments');
+    } catch (error) {
+      console.error('Ödemeleri getirme hatası:', error);
+      throw error;
+    }
+  },
+  getPaymentById: async (id) => {
+    try {
+      return await api.get(`/api/payments/${id}`);
+    } catch (error) {
+      console.error('Ödeme detayı getirme hatası:', error);
+      throw error;
+    }
+  },
+  createPayment: async (paymentData) => {
+    try {
+      console.log('Ödeme oluşturma isteği gönderiliyor:', paymentData);
+      const token = window.localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Oturum bilgisi bulunamadı');
+      }
+      
+      const response = await api.post('/api/payments', paymentData);
+      console.log('Ödeme oluşturma yanıtı:', response.data);
+      return response;
+    } catch (error) {
+      console.error('Ödeme oluşturma hatası:', error);
+      throw error;
+    }
+  },
+  cancelPayment: async (id) => {
+    try {
+      return await api.put(`/api/payments/${id}/cancel`);
+    } catch (error) {
+      console.error('Ödeme iptal hatası:', error);
+      throw error;
+    }
+  },
+  getPaymentsByInvoice: async (invoiceId) => {
+    try {
+      return await api.get(`/api/payments/invoice/${invoiceId}`);
+    } catch (error) {
+      console.error('Fatura bazlı ödemeleri getirme hatası:', error);
+      throw error;
+    }
+  }
 };
 
 export default api; 

@@ -15,6 +15,9 @@ import TablesPage from './pages/TablesPage';
 import TableDetailPage from './pages/TableDetailPage';
 import OrdersPage from './pages/OrdersPage';
 import ProductsPage from './pages/ProductsPage';
+import InvoicesPage from './pages/InvoicesPage';
+import PaymentsPage from './pages/PaymentsPage';
+import ProfilePage from './pages/ProfilePage';
 
 function PrivateRoute({ children }) {
   const isAuthenticated = localStorage.getItem('token');
@@ -79,6 +82,24 @@ function App() {
             <Route path="/products" element={
               <PrivateRoute>
                 <ProductsPage />
+              </PrivateRoute>
+            } />
+            
+            <Route path="/invoices" element={
+              <PrivateRoute>
+                <InvoicesPage />
+              </PrivateRoute>
+            } />
+            
+            <Route path="/payments" element={
+              <PrivateRoute>
+                <PaymentsPage />
+              </PrivateRoute>
+            } />
+            
+            <Route path="/profile" element={
+              <PrivateRoute>
+                <ProfilePage />
               </PrivateRoute>
             } />
             

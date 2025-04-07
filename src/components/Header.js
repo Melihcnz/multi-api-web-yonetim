@@ -56,24 +56,35 @@ const Header = () => {
         <Navbar.Brand as={Link} to="/">İşletme Yönetim Sistemi</Navbar.Brand>
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
-          <Nav className="ms-auto">
-            {isLoggedIn ? (
+          <Nav className="me-auto">
+            {isLoggedIn && (
               <>
                 <Nav.Link as={Link} to="/tables">Masalar</Nav.Link>
                 <Nav.Link as={Link} to="/orders">Siparişler</Nav.Link>
                 <Nav.Link as={Link} to="/products">Ürünler</Nav.Link>
-                
-                <Dropdown align="end">
-                  <Dropdown.Toggle variant="outline-light" id="dropdown-user" className="ms-2">
-                    {userInfo?.name || userInfo?.email || 'Kullanıcı'}
-                  </Dropdown.Toggle>
-                  <Dropdown.Menu>
-                    <Dropdown.Item as={Link} to="/profile">Profil</Dropdown.Item>
-                    <Dropdown.Divider />
-                    <Dropdown.Item onClick={handleLogout}>Çıkış Yap</Dropdown.Item>
-                  </Dropdown.Menu>
-                </Dropdown>
+                <Nav.Link as={Link} to="/invoices">Faturalar</Nav.Link>
+                <Nav.Link as={Link} to="/payments">Ödemeler</Nav.Link>
               </>
+            )}
+          </Nav>
+          
+          <Nav>
+            {isLoggedIn ? (
+              <Dropdown align="end">
+                <Dropdown.Toggle variant="outline-light" id="dropdown-user" className="d-flex align-items-center">
+                  <i className="bi bi-person-circle me-2"></i>
+                  <span>{userInfo?.name || userInfo?.email || 'Firma Adı'}</span>
+                </Dropdown.Toggle>
+                <Dropdown.Menu>
+                  <Dropdown.Item as={Link} to="/profile">
+                    <i className="bi bi-person me-2"></i> Profil
+                  </Dropdown.Item>
+                  <Dropdown.Divider />
+                  <Dropdown.Item onClick={handleLogout}>
+                    <i className="bi bi-box-arrow-right me-2"></i> Çıkış Yap
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown>
             ) : (
               <>
                 <Nav.Link as={Link} to="/login">Giriş</Nav.Link>

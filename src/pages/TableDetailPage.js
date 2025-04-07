@@ -170,6 +170,71 @@ const TableDetailPage = () => {
     }
   };
 
+  const updateExistingOrder = async () => {
+    if (orderItems.length === 0) {
+      setError('Sipariş için en az bir ürün eklemelisiniz');
+      return;
+    }
+
+    try {
+      console.log('Güncellenecek sipariş:', {
+        orderId: activeOrder._id,
+        tableId: id, // Masa ID'sini ekleyelim
+        items: orderItems.map(item => ({
+          productId: item.product, 
+          quantity: item.quantity,
+          notes: item.notes
+        }))
+      });
+
+      // Siparişi güncellemek için API'ye gönderilecek veriyi hazırla
+      const updatedOrderData = {
+        tableId: id, // Masa ID'sini ekliyoruz
+        items: orderItems.map(item => ({
+          productId: item.product,
+          quantity: item.quantity,
+          notes: item.notes || ''
+        }))
+      };
+
+      // Sipariş güncelleme isteği gönder
+      const response = await orderService.updateOrder(activeOrder._id, updatedOrderData);
+      console.log('Sipariş güncelleme yanıtı:', response.data);
+
+      setShowOrderModal(false);
+      setOrderItems([]);
+      
+      // Başarılı mesajı göster
+      setError('');
+      alert('Sipariş başarıyla güncellendi');
+      
+      // Kısa bir gecikmeyle tabloyu güncelleyelim
+      setTimeout(() => {
+        fetchTableData(); // Sayfayı yenileyin
+      }, 500);
+      
+    } catch (error) {
+      console.error('Sipariş güncellenirken hata:', error);
+      let errorMessage = 'Sipariş güncellenirken bir hata oluştu';
+      
+      if (error.response) {
+        // Sunucudan hata yanıtı
+        console.error('Hata yanıtı:', error.response.data);
+        errorMessage = error.response.data.message || errorMessage;
+      } else if (error.request) {
+        // İstek gönderildi ama yanıt alınamadı
+        console.error('İstek hatası:', error.request);
+        errorMessage = 'Sunucuya ulaşılamadı, lütfen internet bağlantınızı kontrol edin';
+      } else {
+        // İstek oluşturulurken hata oluştu
+        console.error('İstek hatası:', error.message);
+        errorMessage = error.message || errorMessage;
+      }
+      
+      setError(errorMessage);
+    }
+  };
+
   const addItemToOrder = () => {
     if (!newOrderItem.product) {
       setError('Lütfen bir ürün seçin');
@@ -271,7 +336,19 @@ const TableDetailPage = () => {
 
   const getFilteredProducts = () => {
     if (!selectedCategory) return products;
-    return products.filter(product => product.category === selectedCategory);
+    
+    // Kategori ID'sine göre filtreleme yaparken debug logları ekleyelim
+    console.log('Filtreleme - Seçili kategori:', selectedCategory);
+    console.log('Filtreleme - Tüm ürünler:', products);
+    
+    // Her ürünün kategorisini kontrol edelim
+    const filteredProducts = products.filter(product => {
+      console.log(`Ürün: ${product.name}, Kategori: ${product.category}, Eşleşme: ${product.category === selectedCategory}`);
+      return product.category === selectedCategory;
+    });
+    
+    console.log('Filtreleme sonucu:', filteredProducts);
+    return filteredProducts;
   };
 
   if (loading) {
@@ -301,7 +378,7 @@ const TableDetailPage = () => {
         <Col md={6}>
           <Card className="shadow-sm">
             <Card.Body>
-              <Card.Title>{table.tableNumber || `Masa #${table._id?.substring(table._id.length - 4)}`}</Card.Title>
+              <Card.Title>{table.name || table.tableNumber || `Masa ${table._id ? `#${table._id.substring(table._id.length - 4)}` : ''}`}</Card.Title>
               <Card.Text>
                 Kapasite: {table.capacity || 0} kişi<br />
                 Durum: {getStatusBadge(table.status)}
@@ -325,6 +402,29 @@ const TableDetailPage = () => {
                 <div>
                   {activeOrder.status === 'pending' || activeOrder.status === 'preparing' ? (
                     <div className="d-flex gap-2">
+                      <Button 
+                        variant="info" 
+                        size="sm" 
+                        onClick={() => {
+                          // Aktif siparişin ürünlerini düzenleme moduna taşı
+                          if (activeOrder.items && activeOrder.items.length > 0) {
+                            // Ürünleri uygun formata dönüştür
+                            const formattedItems = activeOrder.items.map(item => ({
+                              product: item.product?._id || item.product,
+                              productName: item.product?.name || 'Ürün',
+                              price: item.product?.price || item.unitPrice || 0,
+                              quantity: item.quantity,
+                              notes: item.notes || ''
+                            }));
+                            
+                            setOrderItems(formattedItems);
+                            setShowOrderModal(true);
+                          }
+                        }}
+                        className="me-2"
+                      >
+                        Düzenle
+                      </Button>
                       <Button variant="success" size="sm" onClick={completeOrder}>
                         Tamamla
                       </Button>
@@ -405,7 +505,9 @@ const TableDetailPage = () => {
       {/* Sipariş Oluşturma Modalı */}
       <Modal show={showOrderModal} onHide={() => setShowOrderModal(false)} size="lg">
         <Modal.Header closeButton>
-          <Modal.Title>Yeni Sipariş Oluştur - {table.name}</Modal.Title>
+          <Modal.Title>
+            {activeOrder && activeOrder._id ? 'Siparişi Düzenle' : 'Yeni Sipariş Oluştur'} - {table.name || table.tableNumber || `Masa`}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {error && <Alert variant="danger">{error}</Alert>}
@@ -450,15 +552,29 @@ const TableDetailPage = () => {
           </Button>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowOrderModal(false)}>
+          <Button variant="secondary" onClick={() => {
+            setShowOrderModal(false);
+            // Eğer düzenleme modundaysak, çıkışta sipariş öğelerini temizle
+            if (activeOrder && activeOrder._id) {
+              setOrderItems([]);
+            }
+          }}>
             İptal
           </Button>
           <Button 
             variant="primary" 
-            onClick={createNewOrder}
+            onClick={() => {
+              if (activeOrder && activeOrder._id) {
+                // Mevcut siparişi güncelle
+                updateExistingOrder();
+              } else {
+                // Yeni sipariş oluştur
+                createNewOrder();
+              }
+            }}
             disabled={orderItems.length === 0}
           >
-            Siparişi Oluştur
+            {activeOrder && activeOrder._id ? 'Siparişi Güncelle' : 'Siparişi Oluştur'}
           </Button>
         </Modal.Footer>
       </Modal>

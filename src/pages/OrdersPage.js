@@ -15,6 +15,23 @@ const OrdersPage = () => {
       setError('');
       console.log('Siparişler getiriliyor...');
       
+      // Önce masa bilgilerini getirelim (siparişlerden önce)
+      let tableList = [];
+      try {
+        const tablesResponse = await tableService.getAllTables();
+        console.log('Masa yanıtı:', tablesResponse);
+        
+        const tablesData = Array.isArray(tablesResponse.data) ? tablesResponse.data : 
+                          (tablesResponse.data && tablesResponse.data.tables ? tablesResponse.data.tables : []);
+        
+        console.log('İşlenen masa verileri:', tablesData);
+        tableList = tablesData;
+        setTables(tablesData);
+      } catch (tableError) {
+        console.error('Masa bilgilerini getirme hatası:', tableError);
+      }
+      
+      // Sonra siparişleri getirelim
       const ordersResponse = await orderService.getAllOrders();
       console.log('Siparişler yanıtı:', ordersResponse);
       
@@ -23,18 +40,14 @@ const OrdersPage = () => {
                         (ordersResponse.data && ordersResponse.data.orders ? ordersResponse.data.orders : []);
       
       console.log('İşlenen sipariş verileri:', ordersData);
-      setOrders(ordersData);
       
-      // Masa bilgilerini de getirelim
-      try {
-        const tablesResponse = await tableService.getAllTables();
-        const tablesData = Array.isArray(tablesResponse.data) ? tablesResponse.data : 
-                          (tablesResponse.data && tablesResponse.data.tables ? tablesResponse.data.tables : []);
-        
-        setTables(tablesData);
-      } catch (tableError) {
-        console.error('Masa bilgilerini getirme hatası:', tableError);
-      }
+      // Sipariş ve masa ilişkisini debug et
+      ordersData.forEach(order => {
+        const tableName = tableList.find(t => t._id === order.table)?.tableNumber || 'Bulunamadı';
+        console.log(`Sipariş ID: ${order._id}, Masa ID: ${order.table}, Masa Adı: ${tableName}`);
+      });
+      
+      setOrders(ordersData);
     } catch (error) {
       console.error('Siparişleri getirme hatası:', error);
       setError('Siparişleri yüklerken bir hata oluştu');
@@ -76,8 +89,24 @@ const OrdersPage = () => {
   };
 
   const getTableName = (tableId) => {
+    // tableId kontrolü
+    if (!tableId) return 'Belirsiz Masa';
+    
+    // tableId string değilse string'e çevirelim
+    const tableIdStr = String(tableId);
+    
     const table = tables.find(t => t._id === tableId);
-    return table ? (table.name || table.tableNumber || `Masa #${tableId.substring(tableId.length - 4)}`) : 'Bilinmeyen Masa';
+    if (table) {
+      return table.name || table.tableNumber || `Masa ${table.tableNumber || '#' + tableIdStr.substring(0, 6)}`;
+    }
+    
+    // Eğer masa bulunamazsa ID'nin ilk 6 karakterini göster
+    try {
+      return `Masa #${tableIdStr.substring(0, 6)}`;
+    } catch (error) {
+      console.error('Masa ID işleme hatası:', error, tableId);
+      return 'Bilinmeyen Masa';
+    }
   };
 
   const formatDate = (dateString) => {
@@ -151,7 +180,14 @@ const OrdersPage = () => {
             {filteredOrders.map((order) => (
               <tr key={order._id}>
                 <td>#{order._id.substring(order._id.length - 6)}</td>
-                <td>{getTableName(order.table)}</td>
+                <td>
+                  {getTableName(order.table)}
+                  {order.table && (
+                    <small className="text-muted d-block">
+                      ID: {String(order.table).substring(0, 6)}
+                    </small>
+                  )}
+                </td>
                 <td>{formatDate(order.orderDate)}</td>
                 <td>{parseFloat(order.totalAmount).toFixed(2)} TL</td>
                 <td>{getStatusBadge(order.status)}</td>
